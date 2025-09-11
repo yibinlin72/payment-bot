@@ -1,72 +1,55 @@
 import os
-from dotenv import load_dotenv
-from flask import Flask, request, abort
-from linebot.v3.webhook import WebhookHandler, Event
-from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging.models import TextMessage
-from linebot import LineBotApi, WebhookHandler
-from linebot.models import (
-    MessageEvent, 
-    TextMessage, 
-    TextSendMessage,
-    ImageSendMessage)
-from linebot.exceptions import InvalidSignatureError
-import logging
+import requests
+from flask import Flask, request, abort, jsonify
 
-# 加載 .env 文件中的變數
-load_dotenv()
-
-# 從環境變數中讀取 LINE 的 Channel Access Token 和 Channel Secret
-line_token = os.getenv('LINE_TOKEN')
-line_secret = os.getenv('LINE_SECRET')
-
-# 檢查是否設置了環境變數
-if not line_token or not line_secret:
-    print(f"LINE_TOKEN: {line_token}")  # 調試輸出
-    print(f"LINE_SECRET: {line_secret}")  # 調試輸出
-    raise ValueError("LINE_TOKEN 或 LINE_SECRET 未設置")
-
-# 初始化 LineBotApi 和 WebhookHandler
-line_bot_api = LineBotApi(line_token)
-handler = WebhookHandler(line_secret)
-
-# 創建 Flask 應用
 app = Flask(__name__)
 
-app.logger.setLevel(logging.DEBUG)
+# 從 Render 環境變數讀取 LINE Channel Access Token
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 
-# 設置一個路由來處理 LINE Webhook 的回調請求
-@app.route("/", methods=['POST'])
-def callback():
-    # 取得 X-Line-Signature 標頭
-    signature = request.headers['X-Line-Signature']
+# Render 健康檢查 (HEAD /)
+@app.route("/", methods=["GET", "HEAD"])
+def health_check():
+    return ("", 200)
 
-    # 取得請求的原始內容
-    body = request.get_data(as_text=True)
-    app.logger.info(f"Request body: {body}")
-
-    # 驗證簽名並處理請求
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
+# LINE Webhook
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    body = request.get_json()
+    if not body:
         abort(400)
 
-    return 'OK'
+    print("Received event:", body)
 
-# 設置一個事件處理器來處理 TextMessage 事件
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event: Event):
-    if event.message.type == "text":
-        user_message = event.message.text  # 使用者的訊息
-        app.logger.info(f"收到的訊息: {user_message}")
+    for event in body.get("events", []):
+        if event["type"] == "message" and event["message"]["type"] == "text":
+            user_text = event["message"]["text"]
+            reply_token = event["replyToken"]
 
-        # 使用 GPT 生成回應
-        reply_text = ("你說了：" + user_message)
+            # 回覆 Echo
+            reply_message(reply_token, f"你說: {user_text}")
 
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=reply_text)
-        )
-# 應用程序入口點
+    return jsonify({"status": "ok"}), 200
+
+
+def reply_message(reply_token, text):
+    """呼叫 LINE Messaging API 回覆訊息"""
+    url = "https://api.line.me/v2/bot/message/reply"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+    }
+    payload = {
+        "replyToken": reply_token,
+        "messages": [
+            {"type": "text", "text": text}
+        ]
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    print("LINE API response:", response.status_code, response.text)
+    return response
+
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

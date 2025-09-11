@@ -7,12 +7,15 @@ app = Flask(__name__)
 # 從 Render 環境變數讀取 LINE Channel Access Token
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN")
 
-# Render 健康檢查 (HEAD /)
-@app.route("/", methods=["GET", "HEAD"])
-def health_check():
+# Render 健康檢查 + LINE verify 測試
+@app.route("/", methods=["GET", "HEAD", "POST"])
+def index():
+    if request.method == "POST":
+        # LINE 在「Verify Webhook」時，會對 "/" 做 POST 測試
+        return ("OK", 200)
     return ("", 200)
 
-# LINE Webhook
+# LINE Webhook 事件接收端
 @app.route("/webhook", methods=["POST"])
 def webhook():
     body = request.get_json()

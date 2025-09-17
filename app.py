@@ -37,7 +37,7 @@ def webhook():
             if user_text.startswith("/"):
                 command_reply = handle_command(user_text)
                 if command_reply:
-                    messages.append({"type": "text", "text": command_reply})
+                    messages.append(command_reply)
 
             reply_messages(reply_token, messages)
 
@@ -46,37 +46,83 @@ def webhook():
 
 def handle_command(text):
     if text == "/hello":
-        return "哈囉！很高興見到你 👋"
+        return {"type": "text", "text": "哈囉！很高興見到你 👋"}
 
     elif text.startswith("/add"):
         parts = re.split(r"[,\s]+", text[4:].strip())
         if len(parts) != 4:
-            return "格式錯誤，請輸入：/add 日期 類別 描述 金額"
+            return {"type": "text", "text": "格式錯誤，請輸入：/add 日期,類別,描述,金額"}
 
         try:
             pay_dt, category, item, amount = parts
             amount = int(amount)
 
             insert_payment(pay_dt, category, item, amount)
-            return f"✅ 新增成功：{pay_dt}, {category}, {item}, {amount}"
+            return {"type": "text", "text": f"✅ 新增成功：{pay_dt}, {category}, {item}, {amount}"}
 
         except ValueError as e:
-            return f"❌ 錯誤：{e}"
+            return {"type": "text", "text": f"❌ 錯誤：{e}"}
         except Exception as e:
             print("Add error:", e)
-            return "❌ 新增失敗，請檢查格式：/add 日期 類別 描述 金額"
+            return {"type": "text", "text": "❌ 新增失敗，請檢查格式：/add 日期 類別 描述 金額"}
 
     elif text == "/list":
-        return "這是你的消費紀錄"
+        records = get_latest_payments(limit=5)
+        if not records:
+            return {"type": "text", "text": "目前沒有消費紀錄"}
+
+        # 建立 Flex Message 表格
+        contents = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": []
+            }
+        }
+
+        # 表頭
+        contents["body"]["contents"].append({
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                {"type": "text", "text": "日期", "weight": "bold", "size": "sm", "flex": 2},
+                {"type": "text", "text": "類別", "weight": "bold", "size": "sm", "flex": 2},
+                {"type": "text", "text": "描述", "weight": "bold", "size": "sm", "flex": 2},
+                {"type": "text", "text": "金額", "weight": "bold", "size": "sm", "flex": 1, "align": "end"}
+            ]
+        })
+        contents["body"]["contents"].append({"type": "separator"})
+
+        # 資料列
+        for pay_dt, category, item, amount in records:
+            contents["body"]["contents"].append({
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    {"type": "text", "text": pay_dt.strftime("%Y-%m-%d"), "size": "sm", "flex": 2},
+                    {"type": "text", "text": category, "size": "sm", "flex": 2},
+                    {"type": "text", "text": item, "size": "sm", "flex": 2, "wrap": True},
+                    {"type": "text", "text": str(amount), "size": "sm", "flex": 1, "align": "end"}
+                ]
+            })
+
+        return {
+            "type": "flex",
+            "altText": "最近 5 筆消費紀錄",
+            "contents": contents
+        }
 
     elif text == "/help":
-        return (
+        return {"type": "text", "text": (
             "可用指令：\n"
-            "/hello：打招呼\n"
-            "/add 日期 類別 描述 金額：新增消費紀錄\n"
-            "/list：列出消費紀錄\n"
-            "/help：顯示幫助"
-        )
+            "/hello → 打招呼\n"
+            "/add 日期 類別 描述 金額 → 新增消費紀錄\n"
+            "/list → 列出最近 5 筆消費紀錄\n"
+            "/summary → 日期(起) 日期(迄) → 統計消費紀錄\n"
+            "/help → 顯示幫助"
+        )}
 
     else:
         return f"未知的指令：{text}"
@@ -113,6 +159,24 @@ def insert_payment(pay_dt, category, item, amount):
     conn.commit()
     cur.close()
     conn.close()
+
+
+def get_latest_payments(limit=5):
+    """查詢最近的消費紀錄"""
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT pay_dt, category, item, amount
+        FROM payment
+        ORDER BY pay_dt DESC, id DESC
+        LIMIT %s
+    """, (limit,))
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
 
 
 def reply_messages(reply_token, messages):

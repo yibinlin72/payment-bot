@@ -63,8 +63,18 @@
 
   <script>
     async function main() {
-      await liff.init({ liffId: "2008057774-P62MrMmp" }); // ← 換成你申請的 LIFF ID
+      try {
+        await liff.init({ liffId: "2008057774-P62MrMmp" }); // ← 換成你申請的 LIFF ID
 
+        if (!liff.isLoggedIn()) {
+          liff.login();
+        } else {
+          console.log("LIFF 初始化成功");
+          console.log("AccessToken:", liff.getAccessToken());
+        }
+      } catch (err) {
+        console.error("LIFF init error:", err);
+      }
       const form = document.getElementById("paymentForm");
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -83,7 +93,10 @@
           // 呼叫後端 API
           const resp = await fetch("/add", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + liff.getAccessToken()
+            },
             body: JSON.stringify({ pay_dt, category, item, amount })
           });
 

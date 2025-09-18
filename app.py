@@ -68,7 +68,7 @@ def handle_command(text):
     elif text.startswith("/add"):
         parts = re.split(r"[,\s]+", text[4:].strip())
 
-        if len(parts) == 0:
+        if len(parts) != 4:
             return {
                 "type": "template",
                 "altText": "新增消費",
@@ -86,8 +86,8 @@ def handle_command(text):
                 }
             }            
 
-        if len(parts) != 4:
-            return {"type": "text", "text": "格式錯誤，請輸入：/add 日期,類別,描述,金額"}
+        # if len(parts) != 4:
+        #     return {"type": "text", "text": "格式錯誤，請輸入：/add 日期,類別,描述,金額"}
 
         try:
             pay_dt, category, item, amount = parts

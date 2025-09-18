@@ -17,6 +17,23 @@ def index():
         return ("OK", 200)
     return ("", 200)
 
+
+@app.route("/add", methods=["POST"])
+def add_payment():
+    data = request.get_json()
+    pay_dt = data.get("pay_dt")
+    category = data.get("category")
+    item = data.get("item")
+    amount = data.get("amount")
+
+    try:
+        insert_payment(pay_dt, category, item, int(amount))
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        print("Add error:", e)
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
 # LINE Webhook
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -50,6 +67,25 @@ def handle_command(text):
 
     elif text.startswith("/add"):
         parts = re.split(r"[,\s]+", text[4:].strip())
+
+        if len(parts) == 0:
+            return {
+                "type": "template",
+                "altText": "新增消費",
+                "template": {
+                    "type": "buttons",
+                    "title": "新增消費紀錄",
+                    "text": "請點擊下方按鈕填寫表單",
+                    "actions": [
+                        {
+                            "type": "uri",
+                            "label": "開啟表單",
+                            "uri": "https://payment-bot-afpn.onrender.com/static/index.html"  # 你的 LIFF 頁面
+                        }
+                    ]
+                }
+            }            
+
         if len(parts) != 4:
             return {"type": "text", "text": "格式錯誤，請輸入：/add 日期,類別,描述,金額"}
 

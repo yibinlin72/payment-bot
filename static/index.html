@@ -81,7 +81,7 @@
 
         try {
           // 呼叫後端 API
-          const resp = await fetch("https://payment-bot-afpn.onrender.com/add", {
+          const resp = await fetch("/add", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ pay_dt, category, item, amount })

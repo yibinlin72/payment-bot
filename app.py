@@ -88,19 +88,19 @@ def handle_command(text):
 
         # if len(parts) != 4:
         #     return {"type": "text", "text": "格式錯誤，請輸入：/add 日期,類別,描述,金額"}
+        else:
+            try:
+                pay_dt, category, item, amount = parts
+                amount = int(amount)
 
-        try:
-            pay_dt, category, item, amount = parts
-            amount = int(amount)
+                insert_payment(pay_dt, category, item, amount)
+                return {"type": "text", "text": f"✅ 新增成功：{pay_dt}, {category}, {item}, {amount}"}
 
-            insert_payment(pay_dt, category, item, amount)
-            return {"type": "text", "text": f"✅ 新增成功：{pay_dt}, {category}, {item}, {amount}"}
-
-        except ValueError as e:
-            return {"type": "text", "text": f"❌ 錯誤：{e}"}
-        except Exception as e:
-            print("Add error:", e)
-            return {"type": "text", "text": "❌ 新增失敗，請檢查格式：/add 日期 類別 描述 金額"}
+            except ValueError as e:
+                return {"type": "text", "text": f"❌ 錯誤：{e}"}
+            except Exception as e:
+                print("Add error:", e)
+                return {"type": "text", "text": "❌ 新增失敗，請檢查格式：/add 日期 類別 描述 金額"}
 
     elif text == "/list":
         records = get_latest_payments(limit=5)

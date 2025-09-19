@@ -3,36 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <title>新增消費紀錄</title>
+  <!-- ✅ 讓 iPhone 可滿版顯示 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
       background: #f9f9f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
     }
-    h2 { text-align: center; }
+    h2 {
+      text-align: center;
+      font-size: 1.8rem;
+      margin: 20px 0;
+    }
     form {
       background: white;
       padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      max-width: 400px;
-      margin: auto;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      width: 90%;
+      max-width: 600px;
+      box-sizing: border-box;
     }
-    label { display: block; margin-top: 15px; font-weight: bold; }
+    label {
+      display: block;
+      margin-top: 18px;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
     input, select {
-      width: 100%; padding: 8px; margin-top: 5px;
-      border: 1px solid #ccc; border-radius: 5px;
+      width: 100%;
+      padding: 14px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      box-sizing: border-box;
     }
     button {
-      margin-top: 20px;
+      margin-top: 25px;
       width: 100%;
-      padding: 10px;
+      padding: 16px;
       background: #06c755;
       color: white;
       border: none;
-      border-radius: 5px;
-      font-size: 16px;
+      border-radius: 10px;
+      font-size: 1.3rem;
+      font-weight: bold;
       cursor: pointer;
     }
     button:hover { background: #04a944; }
@@ -64,7 +88,7 @@
   <script>
     async function main() {
       try {
-        await liff.init({ liffId: "2008057774-P62MrMmp" }); // ← 換成你申請的 LIFF ID
+        await liff.init({ liffId: "2008057774-P62MrMmp" }); // ← 換成你的 LIFF ID
 
         if (!liff.isLoggedIn()) {
           liff.login();
@@ -75,6 +99,7 @@
       } catch (err) {
         console.error("LIFF init error:", err);
       }
+
       const form = document.getElementById("paymentForm");
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -90,7 +115,6 @@
         }
 
         try {
-          // 呼叫後端 API
           const resp = await fetch("/add", {
             method: "POST",
             headers: {
@@ -101,13 +125,12 @@
           });
 
           if (resp.ok) {
-            // 回傳訊息到聊天室
             await liff.sendMessages([{
               type: "text",
               text: `✅ 已新增：${pay_dt}, ${category}, ${item}, ${amount}`
             }]);
             alert("送出成功！");
-            liff.closeWindow(); // 關閉 LIFF 視窗
+            liff.closeWindow();
           } else {
             alert("送出失敗，請稍後再試");
           }

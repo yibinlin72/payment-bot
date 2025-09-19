@@ -80,7 +80,6 @@ def handle_command(text):
                         {
                             "type": "uri",
                             "label": "開啟表單",
-                            # "uri": "https://payment-bot-afpn.onrender.com/static/index.html"  # 你的 LIFF 頁面
                             "uri": "https://liff.line.me/2008057774-P62MrMmp"  # 你的 LIFF 頁面
                         }
                     ]

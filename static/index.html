@@ -102,10 +102,10 @@
 
           if (resp.ok) {
             // 回傳訊息到聊天室
-            await liff.sendMessages([{
-              type: "text",
-              text: `✅ 已新增：${pay_dt}, ${category}, ${item}, ${amount}`
-            }]);
+            // await liff.sendMessages([{
+            //   type: "text",
+            //   text: `✅ 已新增：${pay_dt}, ${category}, ${item}, ${amount}`
+            // }]);
             alert("送出成功！");
             liff.closeWindow(); // 關閉 LIFF 視窗
           } else {

@@ -84,7 +84,7 @@ def handle_command(text):
                         }
                     ]
                 }
-            }            
+            }
 
         # if len(parts) != 4:
         #     return {"type": "text", "text": "格式錯誤，請輸入：/add 日期,類別,描述,金額"}

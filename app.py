@@ -18,8 +18,8 @@ def index():
     return ("", 200)
 
 
-@app.route("/add", methods=["POST"])
-def add_payment():
+@app.route("/insert", methods=["POST"])
+def insert_payment():
     data = request.get_json()
     pay_dt = data.get("pay_dt")
     category = data.get("category")
@@ -32,6 +32,56 @@ def add_payment():
     except Exception as e:
         print("Add error:", e)
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@app.route("/query", methods=["POST"])
+def query_payment():
+    """依據起訖日期，回傳類別彙整的消費紀錄，並依日期排序"""
+    data = request.get_json()
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+
+    if not start_date or not end_date:
+        return jsonify({"status": "error", "message": "缺少 start_date 或 end_date"}), 400
+
+    if not validate_date_format(start_date) or not validate_date_format(end_date):
+        return jsonify({"status": "error", "message": "日期格式必須為 yyyy-MM-dd"}), 400
+
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+
+        # 先撈出符合日期範圍的紀錄
+        cur.execute("""
+            SELECT pay_dt, category, item, amount
+            FROM payment
+            WHERE pay_dt BETWEEN %s AND %s
+            ORDER BY pay_dt ASC, id ASC
+        """, (start_date, end_date))
+
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not rows:
+            return jsonify({"status": "success", "data": []}), 200
+
+        # 轉成樹狀結構：category -> list of records
+        result = {}
+        for pay_dt, category, item, amount in rows:
+            if category not in result:
+                result[category] = []
+            result[category].append({
+                "date": pay_dt.strftime("%Y-%m-%d"),
+                "item": item,
+                "amount": amount
+            })
+
+        return jsonify({"status": "success", "data": result}), 200
+
+    except Exception as e:
+        print("Query error:", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # LINE Webhook
@@ -65,7 +115,7 @@ def handle_command(text):
     if text == "/hello":
         return {"type": "text", "text": "哈囉！很高興見到你 👋"}
 
-    elif text.startswith("/add"):
+    elif text.startswith("/insert"):
         parts = re.split(r"[,\s]+", text[4:].strip())
 
         if len(parts) != 4:
@@ -149,6 +199,72 @@ def handle_command(text):
             "altText": "最近 5 筆消費紀錄",
             "contents": contents
         }
+
+    elif text.startswith("/query"):
+        parts = re.split(r"[,\s]+", text.strip())
+
+        # case1: 只有 "/query" → 回傳 LIFF 頁面按鈕
+        if len(parts) == 1:
+            return {
+                "type": "template",
+                "altText": "查詢消費紀錄",
+                "template": {
+                    "type": "buttons",
+                    "title": "查詢消費紀錄",
+                    "text": "請點擊下方按鈕輸入查詢條件",
+                    "actions": [
+                        {
+                            "type": "uri",
+                            "label": "開啟查詢頁面",
+                            "uri": "https://liff.line.me/2008057774-3klY0YGz"  # 換成查詢用 LIFF ID
+                        }
+                    ]
+                }
+            }
+
+        # case2: "/query start_date end_date"
+        elif len(parts) == 3:
+            _, start_date, end_date = parts
+
+            if not validate_date_format(start_date) or not validate_date_format(end_date):
+                return {"type": "text", "text": "❌ 日期格式錯誤，請用 yyyy-MM-dd"}
+
+            try:
+                # 查詢資料庫
+                conn = psycopg2.connect(DATABASE_URL)
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT pay_dt, category, item, amount
+                    FROM payment
+                    WHERE pay_dt BETWEEN %s AND %s
+                    ORDER BY pay_dt ASC, id ASC
+                """, (start_date, end_date))
+                rows = cur.fetchall()
+                cur.close()
+                conn.close()
+
+                if not rows:
+                    return {"type": "text", "text": f"查無紀錄 ({start_date} ~ {end_date})"}
+
+                # 分類彙整 → 文字輸出
+                result = {}
+                for pay_dt, category, item, amount in rows:
+                    if category not in result:
+                        result[category] = []
+                    result[category].append(f"{pay_dt.strftime('%Y-%m-%d')} {item} ${amount}")
+
+                text_result = f"📊 消費紀錄 ({start_date} ~ {end_date})\n"
+                for cat, items in result.items():
+                    text_result += f"\n【{cat}】\n" + "\n".join(items)
+
+                return {"type": "text", "text": text_result}
+
+            except Exception as e:
+                print("Query error:", e)
+                return {"type": "text", "text": f"❌ 查詢失敗：{e}"}
+
+        else:
+            return {"type": "text", "text": "❌ 格式錯誤，請輸入：\n/query yyyy-MM-dd yyyy-MM-dd"}
 
     elif text == "/help":
         return {"type": "text", "text": (

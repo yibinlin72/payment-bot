@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>查詢消費紀錄</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    h2 { text-align: center; }
+    form {
+      background: white; padding: 15px; border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      max-width: 500px; margin: auto;
+    }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
+    button {
+      margin-top: 15px; width: 100%; padding: 12px;
+      background: #06c755; color: white; border: none; border-radius: 5px;
+      font-size: 16px; cursor: pointer;
+    }
+    #result { margin-top: 20px; }
+    .category { margin-top: 15px; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .record { margin-left: 15px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>查詢消費紀錄</h2>
+  <form id="queryForm">
+    <label>開始日期</label>
+    <input type="date" id="start_date" required>
+
+    <label>結束日期</label>
+    <input type="date" id="end_date" required>
+
+    <button type="submit">查詢</button>
+  </form>
+
+  <div id="result"></div>
+
+  <script>
+    async function main() {
+      await liff.init({ liffId: "2008057774-3klY0YGz" }); // ⚠️ 換成新的 LIFF ID
+
+      const form = document.getElementById("queryForm");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const start_date = document.getElementById("start_date").value;
+        const end_date = document.getElementById("end_date").value;
+
+        const resp = await fetch("/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + liff.getAccessToken()
+          },
+          body: JSON.stringify({ start_date, end_date })
+        });
+
+        const data = await resp.json();
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = "";
+
+        if (data.status !== "success" || !data.data || Object.keys(data.data).length === 0) {
+          resultDiv.innerHTML = "<p>查無資料</p>";
+          return;
+        }
+
+        // 樹狀結構輸出
+        for (const [category, records] of Object.entries(data.data)) {
+          const catDiv = document.createElement("div");
+          catDiv.className = "category";
+          catDiv.innerHTML = `<strong>${category}</strong>`;
+          records.forEach(r => {
+            const recDiv = document.createElement("div");
+            recDiv.className = "record";
+            recDiv.textContent = `${r.date}｜${r.item}｜$${r.amount}`;
+            catDiv.appendChild(recDiv);
+          });
+          resultDiv.appendChild(catDiv);
+        }
+      });
+    }
+    main();
+  </script>
+</body>
+</html>

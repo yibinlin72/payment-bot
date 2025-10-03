@@ -36,11 +36,11 @@
       background: #06c755; color: white; border: none; border-radius: 5px;
       font-size: 18px; cursor: pointer;
     }
-    #result { margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto; }
+    #result { margin-top: 20px; max-width: 700px; margin-left: auto; margin-right: auto; }
 
     /* 收合區塊樣式 */
     details {
-      margin-bottom: 10px;
+      margin-bottom: 15px;
       border: 1px solid #ccc;
       border-radius: 8px;
       padding: 0.5rem 0.8rem;
@@ -56,6 +56,7 @@
       cursor: pointer;
       outline: none;
       list-style: none;
+      font-size: 18px;
     }
     summary::-webkit-details-marker {
       display: none; /* 隱藏預設箭頭 */
@@ -69,13 +70,44 @@
     details[open] summary::before {
       transform: rotate(90deg);
     }
-    ul {
-      margin: 0.5rem 0 0 1.5rem;
-      padding: 0;
+
+    /* 表格樣式 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 16px;
     }
-    li {
-      list-style: disc;
-      margin: 0.3rem 0;
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+    }
+    th {
+      background: #e6f2ff;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    tr:nth-child(odd) {
+      background: #ffffff;
+    }
+    td:last-child {
+      text-align: right; /* 金額靠右 */
+    }
+    .subtotal {
+      font-weight: bold;
+      background: #fff3cd;
+    }
+    .grand-total {
+      margin-top: 20px;
+      padding: 12px;
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 18px;
+      text-align: right;
     }
   </style>
 </head>
@@ -122,23 +154,47 @@
           return;
         }
 
-        // 使用 <details>/<summary> 收合顯示
+        let grandTotal = 0;
+
+        // 使用 details + table 收合顯示
         for (const [category, records] of Object.entries(data.data)) {
           const details = document.createElement("details");
           const summary = document.createElement("summary");
           summary.textContent = category;
           details.appendChild(summary);
 
-          const ul = document.createElement("ul");
-          records.forEach(r => {
-            const li = document.createElement("li");
-            li.textContent = `${r.date}｜${r.item}｜$${r.amount}`;
-            ul.appendChild(li);
-          });
-          details.appendChild(ul);
+          const table = document.createElement("table");
+          const thead = document.createElement("thead");
+          thead.innerHTML = "<tr><th>日期</th><th>項目</th><th>金額</th></tr>";
+          table.appendChild(thead);
 
+          const tbody = document.createElement("tbody");
+          let subtotal = 0;
+          records.forEach(r => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${r.date}</td><td>${r.item}</td><td>$${r.amount}</td>`;
+            tbody.appendChild(tr);
+            subtotal += Number(r.amount);
+          });
+
+          // 小計行
+          const subtotalTr = document.createElement("tr");
+          subtotalTr.className = "subtotal";
+          subtotalTr.innerHTML = `<td colspan="2">小計</td><td>$${subtotal}</td>`;
+          tbody.appendChild(subtotalTr);
+
+          table.appendChild(tbody);
+          details.appendChild(table);
           resultDiv.appendChild(details);
+
+          grandTotal += subtotal;
         }
+
+        // 總金額
+        const grandDiv = document.createElement("div");
+        grandDiv.className = "grand-total";
+        grandDiv.textContent = `全部總金額：$${grandTotal}`;
+        resultDiv.appendChild(grandDiv);
       });
     }
     main();

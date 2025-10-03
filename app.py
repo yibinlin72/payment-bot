@@ -270,9 +270,9 @@ def handle_command(text):
         return {"type": "text", "text": (
             "可用指令：\n"
             "/hello → 打招呼\n"
-            "/add 日期 類別 描述 金額 → 新增消費紀錄\n"
+            "/insert 日期 類別 描述 金額 → 新增消費紀錄\n"
             "/list → 列出最近 5 筆消費紀錄\n"
-            "/summary → 日期(起) 日期(迄) → 統計消費紀錄\n"
+            "/query → 日期(起) 日期(迄) → 統計消費紀錄\n"
             "/help → 顯示幫助"
         )}
 

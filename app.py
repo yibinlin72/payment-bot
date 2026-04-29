@@ -91,7 +91,7 @@ def webhook():
     if not body:
         abort(400)
 
-    print("Received event:", body)
+    print("Received event:", body, flush=True)
 
     for event in body.get("events", []):
         if event["type"] == "message" and event["message"]["type"] == "text":

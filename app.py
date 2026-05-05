@@ -100,6 +100,38 @@ def webhook():
         if event["type"] == "message" and event["message"]["type"] == "text":
             user_text = event["message"]["text"].strip()
             reply_token = event["replyToken"]
+            user_id = event.get("source", {}).get("userId")
+            source_type = event.get("source", {}).get("type")  # "user", "group", "room"
+            group_id = event.get("source", {}).get("groupId")
+            room_id = event.get("source", {}).get("roomId")
+
+            # 獲取使用者信息
+            user_profile = get_user_profile(user_id) if user_id else None
+            
+            # 獲取群組信息
+            group_info = None
+            group_members = []
+            if source_type == "group" and group_id:
+                group_info = get_group_summary(group_id)
+                group_members = get_group_members(group_id)
+            elif source_type == "room" and room_id:
+                group_members = get_room_members(room_id)
+
+            # 除錯用：打印使用者和群組信息
+            print("\n========== 使用者資訊 ==========")
+            print(f"User ID: {user_id}")
+            print(f"Source Type: {source_type}")
+            print(f"User Profile: {json.dumps(user_profile, indent=2, ensure_ascii=False)}")
+            
+            if group_id:
+                print(f"\nGroup ID: {group_id}")
+                print(f"Group Info: {json.dumps(group_info, indent=2, ensure_ascii=False)}")
+                print(f"Group Members ({len(group_members)}): {json.dumps(group_members[:3], indent=2, ensure_ascii=False)}")  # 只顯示前3個
+            
+            if room_id:
+                print(f"\nRoom ID: {room_id}")
+                print(f"Room Members ({len(group_members)}): {json.dumps(group_members[:3], indent=2, ensure_ascii=False)}")
+            print("================================\n")
 
             # 預設回覆：echo
             messages = [{"type": "text", "text": f"收到: {user_text}"}]
@@ -348,6 +380,159 @@ def reply_messages(reply_token, messages):
     response = requests.post(url, headers=headers, json=payload)
     print("LINE API response:", response.status_code, response.text)
     return response
+
+
+def get_user_profile(user_id):
+    """
+    獲取使用者個人資訊
+    Returns: {
+        "displayName": "使用者名稱",
+        "userId": "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pictureUrl": "https://...",
+        "statusMessage": "狀態訊息"
+    }
+    """
+    if not user_id:
+        return None
+    
+    try:
+        url = f"https://api.line.me/v2/bot/profile/{user_id}"
+        headers = {
+            "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+        }
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Failed to get user profile: {response.status_code} {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error getting user profile: {e}")
+        return None
+
+
+def get_group_summary(group_id):
+    """
+    獲取群組摘要信息
+    Returns: {
+        "groupId": "Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "groupName": "群組名稱",
+        "iconUrl": "https://..."
+    }
+    """
+    if not group_id:
+        return None
+    
+    try:
+        url = f"https://api.line.me/v2/bot/group/{group_id}/summary"
+        headers = {
+            "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+        }
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Failed to get group summary: {response.status_code} {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error getting group summary: {e}")
+        return None
+
+
+def get_group_members(group_id):
+    """
+    獲取群組所有成員資訊
+    Returns: [{
+        "displayName": "成員名稱",
+        "userId": "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pictureUrl": "https://..."
+    }, ...]
+    """
+    if not group_id:
+        return []
+    
+    try:
+        members = []
+        url = f"https://api.line.me/v2/bot/group/{group_id}/members"
+        headers = {
+            "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+        }
+        
+        # LINE API 返回分頁結果，需要使用 start 參數
+        start = None
+        
+        while True:
+            params = {}
+            if start:
+                params["start"] = start
+            
+            response = requests.get(url, headers=headers, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                members.extend(data.get("members", []))
+                
+                # 檢查是否有下一頁
+                start = data.get("next")
+                if not start:
+                    break
+            else:
+                print(f"Failed to get group members: {response.status_code} {response.text}")
+                break
+        
+        return members
+    except Exception as e:
+        print(f"Error getting group members: {e}")
+        return []
+
+
+def get_room_members(room_id):
+    """
+    獲取多人聊天房間所有成員資訊
+    Returns: [{
+        "displayName": "成員名稱",
+        "userId": "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "pictureUrl": "https://..."
+    }, ...]
+    """
+    if not room_id:
+        return []
+    
+    try:
+        members = []
+        url = f"https://api.line.me/v2/bot/room/{room_id}/members"
+        headers = {
+            "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+        }
+        
+        # LINE API 返回分頁結果，需要使用 start 參數
+        start = None
+        
+        while True:
+            params = {}
+            if start:
+                params["start"] = start
+            
+            response = requests.get(url, headers=headers, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                members.extend(data.get("members", []))
+                
+                # 檢查是否有下一頁
+                start = data.get("next")
+                if not start:
+                    break
+            else:
+                print(f"Failed to get room members: {response.status_code} {response.text}")
+                break
+        
+        return members
+    except Exception as e:
+        print(f"Error getting room members: {e}")
+        return []
 
 
 if __name__ == "__main__":

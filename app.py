@@ -93,7 +93,7 @@ def webhook():
         abort(400)
 
     # print("Received event:", body, flush=True)
-    print("RAW EVENT:")
+    print("RAW EVENT:", flush=True)
     print(json.dumps(body, indent=2, ensure_ascii=False), flush=True)
 
     for event in body.get("events", []):
@@ -118,20 +118,20 @@ def webhook():
                 group_members = get_room_members(room_id)
 
             # 除錯用：打印使用者和群組信息
-            print("\n========== 使用者資訊 ==========")
-            print(f"User ID: {user_id}")
-            print(f"Source Type: {source_type}")
-            print(f"User Profile: {json.dumps(user_profile, indent=2, ensure_ascii=False)}")
+            print("\n========== 使用者資訊 ==========", flush=True)
+            print(f"User ID: {user_id}", flush=True)
+            print(f"Source Type: {source_type}", flush=True)
+            print(f"User Profile: {json.dumps(user_profile, indent=2, ensure_ascii=False)}", flush=True)
             
             if group_id:
-                print(f"\nGroup ID: {group_id}")
-                print(f"Group Info: {json.dumps(group_info, indent=2, ensure_ascii=False)}")
-                print(f"Group Members ({len(group_members)}): {json.dumps(group_members[:3], indent=2, ensure_ascii=False)}")  # 只顯示前3個
+                print(f"\nGroup ID: {group_id}", flush=True)
+                print(f"Group Info: {json.dumps(group_info, indent=2, ensure_ascii=False)}", flush=True)
+                print(f"Group Members ({len(group_members)}): {json.dumps(group_members[:3], indent=2, ensure_ascii=False)}", flush=True)  # 只顯示前3個
             
             if room_id:
-                print(f"\nRoom ID: {room_id}")
-                print(f"Room Members ({len(group_members)}): {json.dumps(group_members[:3], indent=2, ensure_ascii=False)}")
-            print("================================\n")
+                print(f"\nRoom ID: {room_id}", flush=True)
+                print(f"Room Members ({len(group_members)}): {json.dumps(group_members[:3], indent=2, ensure_ascii=False)}", flush=True)
+            print("================================\n", flush=True)
 
             # 預設回覆：echo
             messages = [{"type": "text", "text": f"收到: {user_text}"}]
